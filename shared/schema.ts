@@ -101,6 +101,33 @@ export const socialMediaPosts = pgTable("social_media_posts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const feedSources = pgTable("feed_sources", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  category: text("category").notNull(), // 'AI', 'Tech', 'Business', etc.
+  description: text("description"),
+  enabled: boolean("enabled").default(true),
+  lastFetched: timestamp("last_fetched"),
+  articleCount: integer("article_count").default(0),
+  errorCount: integer("error_count").default(0),
+  lastError: text("last_error"),
+  refreshInterval: integer("refresh_interval").default(60), // minutes
+  tags: text("tags").array().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const dataBackups = pgTable("data_backups", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  size: integer("size").notNull(), // bytes
+  recordCount: integer("record_count").notNull(),
+  tables: text("tables").array().notNull(), // tables included in backup
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  downloadUrl: text("download_url"),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -141,6 +168,21 @@ export const insertSocialMediaPostSchema = createInsertSchema(socialMediaPosts).
   updatedAt: true,
 });
 
+export const insertFeedSourceSchema = createInsertSchema(feedSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastFetched: true,
+  articleCount: true,
+  errorCount: true,
+  lastError: true,
+});
+
+export const insertDataBackupSchema = createInsertSchema(dataBackups).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Article = typeof articles.$inferSelect;
@@ -155,3 +197,7 @@ export type Schedule = typeof schedules.$inferSelect;
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
 export type SocialMediaPost = typeof socialMediaPosts.$inferSelect;
 export type InsertSocialMediaPost = z.infer<typeof insertSocialMediaPostSchema>;
+export type FeedSource = typeof feedSources.$inferSelect;
+export type InsertFeedSource = z.infer<typeof insertFeedSourceSchema>;
+export type DataBackup = typeof dataBackups.$inferSelect;
+export type InsertDataBackup = z.infer<typeof insertDataBackupSchema>;

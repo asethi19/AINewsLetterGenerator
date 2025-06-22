@@ -9,6 +9,8 @@ import StatusPanel from "@/components/StatusPanel";
 import SettingsModal from "@/components/SettingsModal";
 import ScheduleManager from "@/components/ScheduleManager";
 import SocialMediaManager from "@/components/SocialMediaManager";
+import FeedSourceManager from "@/components/FeedSourceManager";
+import DataManager from "@/components/DataManager";
 
 export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -72,12 +74,14 @@ export default function Dashboard() {
       {/* Main Dashboard */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="generator">Generator</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="social">Social Media</TabsTrigger>
             <TabsTrigger value="articles">Articles</TabsTrigger>
+            <TabsTrigger value="feeds">Feed Sources</TabsTrigger>
+            <TabsTrigger value="data">Data Manager</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -114,6 +118,14 @@ export default function Dashboard() {
 
           <TabsContent value="articles" className="space-y-6">
             <NewsFeeder />
+          </TabsContent>
+
+          <TabsContent value="feeds" className="space-y-6">
+            <FeedSourceManager />
+          </TabsContent>
+
+          <TabsContent value="data" className="space-y-6">
+            <DataManager />
           </TabsContent>
         </Tabs>
       </main>

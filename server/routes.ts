@@ -6,7 +6,7 @@ import { ClaudeService } from "./services/claudeService";
 import { BeehiivService } from "./services/beehiivService";
 import { EmailService } from "./services/emailService";
 import { schedulerService } from "./services/schedulerService";
-import { insertArticleSchema, insertNewsletterSchema, insertSettingsSchema, insertActivityLogSchema, insertScheduleSchema, insertSocialMediaPostSchema, type SocialMediaPost } from "@shared/schema";
+import { insertArticleSchema, insertNewsletterSchema, insertSettingsSchema, insertActivityLogSchema, insertScheduleSchema, insertSocialMediaPostSchema, insertFeedSourceSchema, insertDataBackupSchema, type SocialMediaPost, type FeedSource, type DataBackup } from "@shared/schema";
 import { SocialMediaService } from "./services/socialMediaService";
 
 export async function registerRoutes(app: Express): Promise<Server> {

@@ -24,7 +24,7 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 ### Database Architecture
 - **Database**: PostgreSQL with Neon serverless driver (migrated from in-memory storage)
 - **Schema Management**: Drizzle Kit for migrations and schema management
-- **Tables**: Users, articles, newsletters, settings, activity logs, schedules, and social media posts
+- **Tables**: Users, articles, newsletters, settings, activity logs, schedules, social media posts, feed sources, and data backups
 - **Data Validation**: Zod schemas for runtime type checking
 - **Storage Layer**: DatabaseStorage implementation with full CRUD operations
 
@@ -82,6 +82,19 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 - **Random Scheduling**: Posts scheduled at optimal engagement times
 - **Subscription Focus**: Content designed to drive newsletter subscriptions
 - **Hashtag Optimization**: Platform-specific hashtag strategies for maximum reach
+
+### Feed Source Management
+- **Multiple Feed Support**: Manage unlimited RSS/JSON feed sources
+- **Categorization**: Organize feeds by category (AI, Tech, Business, etc.)
+- **Auto-refresh**: Configurable refresh intervals for each feed
+- **Feed Testing**: Built-in feed validation and testing
+- **Error Tracking**: Monitor feed health and error counts
+
+### Data Management
+- **Export Functionality**: Export all data in JSON format for backup
+- **Selective Purging**: Safe data purging with confirmation dialogs
+- **Backup History**: Track all exports with file sizes and record counts
+- **Data Statistics**: Real-time statistics on data usage and storage
 
 ## Data Flow
 
@@ -153,6 +166,13 @@ This is a full-stack AI-powered newsletter automation system built with React, E
   - Created SocialMediaManager component for managing multi-platform posts
   - Integrated random scheduling for optimal engagement times
   - Added social media posts database table with full CRUD operations
+- June 22, 2025: Enhanced with Enterprise Features
+  - Added comprehensive feed source management for multiple RSS/JSON feeds
+  - Implemented data export and backup functionality with download capabilities
+  - Created data purging system with safety confirmations
+  - Added FeedSourceManager for managing unlimited news sources with categorization
+  - Implemented DataManager for complete data lifecycle management
+  - Enhanced database schema with feed sources and data backups tables
 
 ## User Preferences
 

@@ -1,9 +1,10 @@
 import { 
-  users, articles, newsletters, settings, activityLogs, schedules, socialMediaPosts,
+  users, articles, newsletters, settings, activityLogs, schedules, socialMediaPosts, feedSources, dataBackups,
   type User, type InsertUser, type Article, type InsertArticle,
   type Newsletter, type InsertNewsletter, type Settings, type InsertSettings,
   type ActivityLog, type InsertActivityLog, type Schedule, type InsertSchedule,
-  type SocialMediaPost, type InsertSocialMediaPost
+  type SocialMediaPost, type InsertSocialMediaPost, type FeedSource, type InsertFeedSource,
+  type DataBackup, type InsertDataBackup
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -51,6 +52,20 @@ export interface IStorage {
   updateSocialMediaPost(id: number, updates: Partial<SocialMediaPost>): Promise<SocialMediaPost | undefined>;
   deleteSocialMediaPost(id: number): Promise<boolean>;
   getScheduledSocialMediaPosts(): Promise<SocialMediaPost[]>;
+  
+  // Feed Sources
+  getFeedSources(): Promise<FeedSource[]>;
+  createFeedSource(feedSource: InsertFeedSource): Promise<FeedSource>;
+  updateFeedSource(id: number, updates: Partial<FeedSource>): Promise<FeedSource | undefined>;
+  deleteFeedSource(id: number): Promise<boolean>;
+  getEnabledFeedSources(): Promise<FeedSource[]>;
+  
+  // Data Management
+  createDataBackup(backup: InsertDataBackup): Promise<DataBackup>;
+  getDataBackups(): Promise<DataBackup[]>;
+  deleteDataBackup(id: number): Promise<boolean>;
+  purgeAllData(): Promise<void>;
+  exportAllData(): Promise<any>;
 }
 
 export class MemStorage implements IStorage {
@@ -61,12 +76,16 @@ export class MemStorage implements IStorage {
   private activityLogs: Map<number, ActivityLog> = new Map();
   private schedules: Map<number, Schedule> = new Map();
   private socialMediaPosts: Map<number, SocialMediaPost> = new Map();
+  private feedSources: Map<number, FeedSource> = new Map();
+  private dataBackups: Map<number, DataBackup> = new Map();
   private currentId = 1;
   private articleId = 1;
   private newsletterId = 1;
   private logId = 1;
   private scheduleId = 1;
   private socialMediaPostId = 1;
+  private feedSourceId = 1;
+  private backupId = 1;
 
   // Users
   async getUser(id: number): Promise<User | undefined> {
@@ -577,6 +596,114 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(socialMediaPosts)
       .where(eq(socialMediaPosts.status, "scheduled"))
       .orderBy(socialMediaPosts.scheduledFor);
+  }
+
+  // Feed Sources
+  async getFeedSources(): Promise<FeedSource[]> {
+    return await db.select().from(feedSources).orderBy(feedSources.name);
+  }
+
+  async createFeedSource(insertFeedSource: InsertFeedSource): Promise<FeedSource> {
+    const [feedSource] = await db
+      .insert(feedSources)
+      .values({
+        ...insertFeedSource,
+        enabled: insertFeedSource.enabled !== undefined ? insertFeedSource.enabled : true,
+        lastFetched: null,
+        articleCount: 0,
+        errorCount: 0,
+        lastError: null,
+        refreshInterval: insertFeedSource.refreshInterval || 60,
+        tags: insertFeedSource.tags || [],
+      })
+      .returning();
+    return feedSource;
+  }
+
+  async updateFeedSource(id: number, updates: Partial<FeedSource>): Promise<FeedSource | undefined> {
+    const [feedSource] = await db
+      .update(feedSources)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(feedSources.id, id))
+      .returning();
+    return feedSource || undefined;
+  }
+
+  async deleteFeedSource(id: number): Promise<boolean> {
+    const result = await db.delete(feedSources).where(eq(feedSources.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getEnabledFeedSources(): Promise<FeedSource[]> {
+    return await db.select().from(feedSources)
+      .where(eq(feedSources.enabled, true))
+      .orderBy(feedSources.name);
+  }
+
+  // Data Management
+  async createDataBackup(insertBackup: InsertDataBackup): Promise<DataBackup> {
+    const [backup] = await db
+      .insert(dataBackups)
+      .values({
+        ...insertBackup,
+        downloadUrl: null,
+      })
+      .returning();
+    return backup;
+  }
+
+  async getDataBackups(): Promise<DataBackup[]> {
+    return await db.select().from(dataBackups).orderBy(desc(dataBackups.createdAt));
+  }
+
+  async deleteDataBackup(id: number): Promise<boolean> {
+    const result = await db.delete(dataBackups).where(eq(dataBackups.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async purgeAllData(): Promise<void> {
+    // Delete all data except users and settings
+    await db.delete(articles);
+    await db.delete(newsletters);
+    await db.delete(activityLogs);
+    await db.delete(schedules);
+    await db.delete(socialMediaPosts);
+    await db.delete(feedSources);
+    await db.delete(dataBackups);
+  }
+
+  async exportAllData(): Promise<any> {
+    const [
+      articlesData,
+      newslettersData,
+      settingsData,
+      activityLogsData,
+      schedulesData,
+      socialMediaPostsData,
+      feedSourcesData,
+      backupsData
+    ] = await Promise.all([
+      db.select().from(articles),
+      db.select().from(newsletters),
+      db.select().from(settings),
+      db.select().from(activityLogs),
+      db.select().from(schedules),
+      db.select().from(socialMediaPosts),
+      db.select().from(feedSources),
+      db.select().from(dataBackups),
+    ]);
+
+    return {
+      articles: articlesData,
+      newsletters: newslettersData,
+      settings: settingsData[0] || null,
+      activityLogs: activityLogsData,
+      schedules: schedulesData,
+      socialMediaPosts: socialMediaPostsData,
+      feedSources: feedSourcesData,
+      backups: backupsData,
+      exportedAt: new Date().toISOString(),
+    };
   }
 }
 
