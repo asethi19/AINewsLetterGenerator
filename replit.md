@@ -22,10 +22,11 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 - **Development**: Hot reload with Vite middleware in development
 
 ### Database Architecture
-- **Database**: PostgreSQL with Neon serverless driver
+- **Database**: PostgreSQL with Neon serverless driver (migrated from in-memory storage)
 - **Schema Management**: Drizzle Kit for migrations and schema management
-- **Tables**: Users, articles, newsletters, settings, and activity logs
+- **Tables**: Users, articles, newsletters, settings, activity logs, and schedules
 - **Data Validation**: Zod schemas for runtime type checking
+- **Storage Layer**: DatabaseStorage implementation with full CRUD operations
 
 ## Key Components
 
@@ -133,6 +134,10 @@ This is a full-stack AI-powered newsletter automation system built with React, E
   - Added email approval workflow with SendGrid integration
   - Enhanced settings with scheduling and email configuration options
   - Added schedule manager for creating daily/weekly/monthly automated newsletters
+- June 22, 2025: Migrated to PostgreSQL database
+  - Replaced in-memory storage with DatabaseStorage implementation
+  - Added database connection and ORM configuration
+  - Pushed schema to PostgreSQL for persistent data storage
 
 ## User Preferences
 

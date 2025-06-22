@@ -4,6 +4,8 @@ import {
   type Newsletter, type InsertNewsletter, type Settings, type InsertSettings,
   type ActivityLog, type InsertActivityLog, type Schedule, type InsertSchedule
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -278,4 +280,245 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  // Articles
+  async getArticles(): Promise<Article[]> {
+    return await db.select().from(articles).orderBy(desc(articles.publishedDate));
+  }
+
+  async createArticle(insertArticle: InsertArticle): Promise<Article> {
+    const [article] = await db
+      .insert(articles)
+      .values({
+        ...insertArticle,
+        content: insertArticle.content || null,
+        selected: insertArticle.selected || false,
+      })
+      .returning();
+    return article;
+  }
+
+  async updateArticleSelection(id: number, selected: boolean): Promise<Article | undefined> {
+    const [article] = await db
+      .update(articles)
+      .set({ selected })
+      .where(eq(articles.id, id))
+      .returning();
+    return article || undefined;
+  }
+
+  async clearArticles(): Promise<void> {
+    await db.delete(articles);
+  }
+
+  // Newsletters
+  async getNewsletters(): Promise<Newsletter[]> {
+    return await db.select().from(newsletters).orderBy(desc(newsletters.issueNumber));
+  }
+
+  async getNewsletter(id: number): Promise<Newsletter | undefined> {
+    const [newsletter] = await db.select().from(newsletters).where(eq(newsletters.id, id));
+    return newsletter || undefined;
+  }
+
+  async getLatestNewsletter(): Promise<Newsletter | undefined> {
+    const [newsletter] = await db
+      .select()
+      .from(newsletters)
+      .orderBy(desc(newsletters.issueNumber))
+      .limit(1);
+    return newsletter || undefined;
+  }
+
+  async createNewsletter(insertNewsletter: InsertNewsletter): Promise<Newsletter> {
+    const [newsletter] = await db
+      .insert(newsletters)
+      .values({
+        ...insertNewsletter,
+        status: insertNewsletter.status || "draft",
+        frequency: insertNewsletter.frequency || "manual",
+        scheduleTime: insertNewsletter.scheduleTime || null,
+        approvalRequired: insertNewsletter.approvalRequired || false,
+        approvalEmail: insertNewsletter.approvalEmail || null,
+        approvedBy: insertNewsletter.approvedBy || null,
+        htmlContent: insertNewsletter.htmlContent || null,
+        beehiivId: insertNewsletter.beehiivId || null,
+        beehiivUrl: insertNewsletter.beehiivUrl || null,
+        wordCount: insertNewsletter.wordCount || null,
+      })
+      .returning();
+    return newsletter;
+  }
+
+  async updateNewsletter(id: number, updates: Partial<Newsletter>): Promise<Newsletter | undefined> {
+    const [newsletter] = await db
+      .update(newsletters)
+      .set(updates)
+      .where(eq(newsletters.id, id))
+      .returning();
+    return newsletter || undefined;
+  }
+
+  async getNextIssueNumber(): Promise<number> {
+    const latest = await this.getLatestNewsletter();
+    const settingsData = await this.getSettings();
+    return latest ? latest.issueNumber + 1 : (settingsData?.issueStartNumber || 1);
+  }
+
+  // Settings
+  async getSettings(): Promise<Settings | undefined> {
+    const [settingsData] = await db.select().from(settings).limit(1);
+    return settingsData || undefined;
+  }
+
+  async updateSettings(insertSettings: InsertSettings): Promise<Settings> {
+    // First check if settings exist
+    const existing = await this.getSettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(settings)
+        .set({
+          ...insertSettings,
+          updatedAt: new Date(),
+        })
+        .where(eq(settings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(settings)
+        .values({
+          ...insertSettings,
+          claudeApiKey: insertSettings.claudeApiKey || null,
+          claudeModel: insertSettings.claudeModel || "claude-sonnet-4-20250514",
+          claudeTemperature: insertSettings.claudeTemperature || "0.7",
+          claudeMaxTokens: insertSettings.claudeMaxTokens || 4000,
+          beehiivApiKey: insertSettings.beehiivApiKey || null,
+          beehiivPublicationId: insertSettings.beehiivPublicationId || null,
+          newsletterTitle: insertSettings.newsletterTitle || "AI Weekly",
+          issueStartNumber: insertSettings.issueStartNumber || 1,
+          defaultNewsSource: insertSettings.defaultNewsSource || null,
+          sendgridApiKey: insertSettings.sendgridApiKey || null,
+          approvalEmail: insertSettings.approvalEmail || null,
+          approvalRequired: insertSettings.approvalRequired || false,
+          dailyScheduleEnabled: insertSettings.dailyScheduleEnabled || false,
+          dailyScheduleTime: insertSettings.dailyScheduleTime || "09:00",
+          autoSelectArticles: insertSettings.autoSelectArticles || false,
+          maxDailyArticles: insertSettings.maxDailyArticles || 5,
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  // Activity Logs
+  async getActivityLogs(): Promise<ActivityLog[]> {
+    return await db.select().from(activityLogs).orderBy(desc(activityLogs.timestamp));
+  }
+
+  async createActivityLog(insertLog: InsertActivityLog): Promise<ActivityLog> {
+    const [log] = await db
+      .insert(activityLogs)
+      .values({
+        message: insertLog.message,
+        details: insertLog.details || null,
+        type: insertLog.type,
+      })
+      .returning();
+    return log;
+  }
+
+  async clearActivityLogs(): Promise<void> {
+    await db.delete(activityLogs);
+  }
+
+  // Schedules
+  async getSchedules(): Promise<Schedule[]> {
+    return await db.select().from(schedules).orderBy(schedules.name);
+  }
+
+  async createSchedule(insertSchedule: InsertSchedule): Promise<Schedule> {
+    const [schedule] = await db
+      .insert(schedules)
+      .values({
+        ...insertSchedule,
+        maxArticles: insertSchedule.maxArticles || 5,
+        autoApprove: insertSchedule.autoApprove || false,
+        enabled: insertSchedule.enabled || true,
+        nextRun: this.calculateNextRun(insertSchedule.frequency, insertSchedule.time),
+      })
+      .returning();
+    return schedule;
+  }
+
+  async updateSchedule(id: number, updates: Partial<Schedule>): Promise<Schedule | undefined> {
+    const schedule = await db.select().from(schedules).where(eq(schedules.id, id));
+    if (schedule.length === 0) return undefined;
+
+    const updateData = { ...updates };
+    if (updates.frequency || updates.time) {
+      updateData.nextRun = this.calculateNextRun(
+        updates.frequency || schedule[0].frequency,
+        updates.time || schedule[0].time
+      );
+    }
+
+    const [updated] = await db
+      .update(schedules)
+      .set(updateData)
+      .where(eq(schedules.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSchedule(id: number): Promise<boolean> {
+    const result = await db.delete(schedules).where(eq(schedules.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getEnabledSchedules(): Promise<Schedule[]> {
+    return await db.select().from(schedules).where(eq(schedules.enabled, true));
+  }
+
+  private calculateNextRun(frequency: string, time: string): Date {
+    const now = new Date();
+    const [hours, minutes] = time.split(':').map(Number);
+    const nextRun = new Date(now);
+    nextRun.setHours(hours, minutes, 0, 0);
+
+    if (frequency === 'daily') {
+      if (nextRun <= now) {
+        nextRun.setDate(nextRun.getDate() + 1);
+      }
+    } else if (frequency === 'weekly') {
+      nextRun.setDate(nextRun.getDate() + (7 - nextRun.getDay()));
+      if (nextRun <= now) {
+        nextRun.setDate(nextRun.getDate() + 7);
+      }
+    }
+
+    return nextRun;
+  }
+}
+
+export const storage = new DatabaseStorage();
