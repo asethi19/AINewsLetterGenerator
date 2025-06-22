@@ -493,7 +493,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSchedule(id: number): Promise<boolean> {
     const result = await db.delete(schedules).where(eq(schedules.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getEnabledSchedules(): Promise<Schedule[]> {
