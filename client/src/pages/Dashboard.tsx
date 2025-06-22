@@ -6,6 +6,7 @@ import NewsletterGenerator from "@/components/NewsletterGenerator";
 import ControlsPanel from "@/components/ControlsPanel";
 import StatusPanel from "@/components/StatusPanel";
 import SettingsModal from "@/components/SettingsModal";
+import ScheduleManager from "@/components/ScheduleManager";
 
 export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -84,6 +85,11 @@ export default function Dashboard() {
         {/* Status Panel (Full Width) */}
         <div className="mt-8">
           <StatusPanel />
+        </div>
+
+        {/* Schedule Manager (Full Width) */}
+        <div className="mt-8">
+          <ScheduleManager />
         </div>
       </main>
 

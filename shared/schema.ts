@@ -24,8 +24,15 @@ export const newsletters = pgTable("newsletters", {
   issueNumber: integer("issue_number").notNull(),
   title: text("title").notNull(),
   content: text("content").notNull(),
+  htmlContent: text("html_content"),
   date: timestamp("date").notNull(),
-  status: text("status").notNull().default("draft"), // draft, generated, published
+  status: text("status").notNull().default("draft"), // draft, generated, approved, published, rejected
+  frequency: text("frequency").default("manual"), // manual, daily, weekly
+  scheduleTime: text("schedule_time"), // HH:MM format for daily scheduling
+  approvalRequired: boolean("approval_required").default(false),
+  approvalEmail: text("approval_email"),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
   beehiivId: text("beehiiv_id"),
   beehiivUrl: text("beehiiv_url"),
   wordCount: integer("word_count"),
@@ -44,6 +51,15 @@ export const settings = pgTable("settings", {
   newsletterTitle: text("newsletter_title").default("AI Weekly"),
   issueStartNumber: integer("issue_start_number").default(1),
   defaultNewsSource: text("default_news_source"),
+  // Email settings
+  sendgridApiKey: text("sendgrid_api_key"),
+  approvalEmail: text("approval_email"),
+  approvalRequired: boolean("approval_required").default(false),
+  // Scheduling settings
+  dailyScheduleEnabled: boolean("daily_schedule_enabled").default(false),
+  dailyScheduleTime: text("daily_schedule_time").default("09:00"),
+  autoSelectArticles: boolean("auto_select_articles").default(false),
+  maxDailyArticles: integer("max_daily_articles").default(5),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -53,6 +69,20 @@ export const activityLogs = pgTable("activity_logs", {
   details: text("details"),
   type: text("type").notNull(), // info, success, warning, error
   timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const schedules = pgTable("schedules", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  frequency: text("frequency").notNull(), // daily, weekly, monthly
+  time: text("time").notNull(), // HH:MM format
+  newsSourceUrl: text("news_source_url").notNull(),
+  maxArticles: integer("max_articles").default(5),
+  autoApprove: boolean("auto_approve").default(false),
+  enabled: boolean("enabled").default(true),
+  lastRun: timestamp("last_run"),
+  nextRun: timestamp("next_run"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -69,6 +99,7 @@ export const insertNewsletterSchema = createInsertSchema(newsletters).omit({
   id: true,
   generatedAt: true,
   publishedAt: true,
+  approvedAt: true,
 });
 
 export const insertSettingsSchema = createInsertSchema(settings).omit({
@@ -81,6 +112,13 @@ export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
   timestamp: true,
 });
 
+export const insertScheduleSchema = createInsertSchema(schedules).omit({
+  id: true,
+  createdAt: true,
+  lastRun: true,
+  nextRun: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Article = typeof articles.$inferSelect;
@@ -91,3 +129,5 @@ export type Settings = typeof settings.$inferSelect;
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type Schedule = typeof schedules.$inferSelect;
+export type InsertSchedule = z.infer<typeof insertScheduleSchema>;

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/useSettings";
@@ -25,8 +26,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   
   const [showClaudeKey, setShowClaudeKey] = useState(false);
   const [showBeehiivKey, setShowBeehiivKey] = useState(false);
+  const [showSendgridKey, setShowSendgridKey] = useState(false);
   const [isTestingClaude, setIsTestingClaude] = useState(false);
   const [isTestingBeehiiv, setIsTestingBeehiiv] = useState(false);
+  const [isTestingSendgrid, setIsTestingSendgrid] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -39,6 +42,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     newsletterTitle: 'AI Weekly',
     issueStartNumber: 1,
     defaultNewsSource: 'https://www.inoreader.com/stream/user/1003985272/tag/AI/view/json',
+    sendgridApiKey: '',
+    approvalEmail: '',
+    approvalRequired: false,
+    dailyScheduleEnabled: false,
+    dailyScheduleTime: '09:00',
+    autoSelectArticles: false,
+    maxDailyArticles: 5,
   });
 
   // Load settings into form when modal opens
@@ -54,6 +64,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         newsletterTitle: settings.newsletterTitle || 'AI Weekly',
         issueStartNumber: settings.issueStartNumber || 1,
         defaultNewsSource: settings.defaultNewsSource || 'https://www.inoreader.com/stream/user/1003985272/tag/AI/view/json',
+        sendgridApiKey: settings.sendgridApiKey === '***masked***' ? '' : settings.sendgridApiKey || '',
+        approvalEmail: settings.approvalEmail || '',
+        approvalRequired: settings.approvalRequired || false,
+        dailyScheduleEnabled: settings.dailyScheduleEnabled || false,
+        dailyScheduleTime: settings.dailyScheduleTime || '09:00',
+        autoSelectArticles: settings.autoSelectArticles || false,
+        maxDailyArticles: settings.maxDailyArticles || 5,
       });
     }
   }, [isOpen, settings]);
@@ -63,8 +80,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     onClose();
   };
 
-  const handleTestConnection = async (service: 'claude' | 'beehiiv') => {
-    const apiKey = service === 'claude' ? formData.claudeApiKey : formData.beehiivApiKey;
+  const handleTestConnection = async (service: 'claude' | 'beehiiv' | 'sendgrid') => {
+    const apiKey = service === 'claude' ? formData.claudeApiKey : 
+                   service === 'beehiiv' ? formData.beehiivApiKey : 
+                   formData.sendgridApiKey;
     
     if (!apiKey) {
       toast({
@@ -75,7 +94,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       return;
     }
 
-    const setTesting = service === 'claude' ? setIsTestingClaude : setIsTestingBeehiiv;
+    const setTesting = service === 'claude' ? setIsTestingClaude : 
+                       service === 'beehiiv' ? setIsTestingBeehiiv : 
+                       setIsTestingSendgrid;
     setTesting(true);
 
     try {
@@ -89,12 +110,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       if (result.connected) {
         toast({
           title: "Connection Successful",
-          description: `Successfully connected to ${service === 'claude' ? 'Claude' : 'Beehiiv'} API.`,
+          description: `Successfully connected to ${service === 'claude' ? 'Claude' : service === 'beehiiv' ? 'Beehiiv' : 'SendGrid'} API.`,
         });
       } else {
         toast({
           title: "Connection Failed",
-          description: result.error || `Failed to connect to ${service === 'claude' ? 'Claude' : 'Beehiiv'} API.`,
+          description: result.error || `Failed to connect to ${service === 'claude' ? 'Claude' : service === 'beehiiv' ? 'Beehiiv' : 'SendGrid'} API.`,
           variant: "destructive",
         });
       }
@@ -117,11 +138,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </DialogHeader>
 
         <Tabs defaultValue="claude" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="claude">Claude API</TabsTrigger>
             <TabsTrigger value="beehiiv">Beehiiv API</TabsTrigger>
             <TabsTrigger value="newsletter">Newsletter</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced</TabsTrigger>
+            <TabsTrigger value="email">Email</TabsTrigger>
+            <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
           </TabsList>
 
           <TabsContent value="claude" className="space-y-6">
@@ -333,9 +355,115 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </div>
           </TabsContent>
 
-          <TabsContent value="advanced" className="space-y-6">
-            <div className="text-center py-8">
-              <p className="text-slate-500">Advanced settings coming soon...</p>
+          <TabsContent value="email" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="sendgrid-api-key" className="text-sm font-medium text-slate-700 mb-2 block">
+                  SendGrid API Key
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="sendgrid-api-key"
+                    type={showSendgridKey ? "text" : "password"}
+                    value={formData.sendgridApiKey}
+                    onChange={(e) => setFormData({ ...formData, sendgridApiKey: e.target.value })}
+                    placeholder="SG...."
+                    className="pr-20"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSendgridKey(!showSendgridKey)}
+                    className="absolute right-12 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                  >
+                    {showSendgridKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleTestConnection('sendgrid')}
+                    disabled={isTestingSendgrid || !formData.sendgridApiKey}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                  >
+                    <TestTube className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Your SendGrid API key for email notifications</p>
+              </div>
+
+              <div>
+                <Label htmlFor="approval-email" className="text-sm font-medium text-slate-700 mb-2 block">
+                  Approval Email
+                </Label>
+                <Input
+                  id="approval-email"
+                  type="email"
+                  value={formData.approvalEmail}
+                  onChange={(e) => setFormData({ ...formData, approvalEmail: e.target.value })}
+                  placeholder="admin@example.com"
+                />
+                <p className="text-xs text-slate-500 mt-1">Email address to receive approval notifications</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={formData.approvalRequired}
+                onCheckedChange={(checked) => setFormData({ ...formData, approvalRequired: checked })}
+              />
+              <Label>Require email approval before publishing newsletters</Label>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="scheduling" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="daily-schedule-time" className="text-sm font-medium text-slate-700 mb-2 block">
+                  Daily Schedule Time
+                </Label>
+                <Input
+                  id="daily-schedule-time"
+                  type="time"
+                  value={formData.dailyScheduleTime}
+                  onChange={(e) => setFormData({ ...formData, dailyScheduleTime: e.target.value })}
+                />
+                <p className="text-xs text-slate-500 mt-1">Time to automatically generate daily newsletters</p>
+              </div>
+
+              <div>
+                <Label htmlFor="max-daily-articles" className="text-sm font-medium text-slate-700 mb-2 block">
+                  Max Daily Articles
+                </Label>
+                <Input
+                  id="max-daily-articles"
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={formData.maxDailyArticles}
+                  onChange={(e) => setFormData({ ...formData, maxDailyArticles: parseInt(e.target.value) || 5 })}
+                />
+                <p className="text-xs text-slate-500 mt-1">Maximum articles to include in daily newsletters</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={formData.dailyScheduleEnabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, dailyScheduleEnabled: checked })}
+                />
+                <Label>Enable daily newsletter generation</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={formData.autoSelectArticles}
+                  onCheckedChange={(checked) => setFormData({ ...formData, autoSelectArticles: checked })}
+                />
+                <Label>Automatically select articles for daily newsletters</Label>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

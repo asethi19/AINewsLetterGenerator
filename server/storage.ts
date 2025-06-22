@@ -1,8 +1,8 @@
 import { 
-  users, articles, newsletters, settings, activityLogs,
+  users, articles, newsletters, settings, activityLogs, schedules,
   type User, type InsertUser, type Article, type InsertArticle,
   type Newsletter, type InsertNewsletter, type Settings, type InsertSettings,
-  type ActivityLog, type InsertActivityLog
+  type ActivityLog, type InsertActivityLog, type Schedule, type InsertSchedule
 } from "@shared/schema";
 
 export interface IStorage {
@@ -33,6 +33,13 @@ export interface IStorage {
   getActivityLogs(): Promise<ActivityLog[]>;
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   clearActivityLogs(): Promise<void>;
+  
+  // Schedules
+  getSchedules(): Promise<Schedule[]>;
+  createSchedule(schedule: InsertSchedule): Promise<Schedule>;
+  updateSchedule(id: number, updates: Partial<Schedule>): Promise<Schedule | undefined>;
+  deleteSchedule(id: number): Promise<boolean>;
+  getEnabledSchedules(): Promise<Schedule[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -41,10 +48,12 @@ export class MemStorage implements IStorage {
   private newsletters: Map<number, Newsletter> = new Map();
   private currentSettings: Settings | undefined = undefined;
   private activityLogs: Map<number, ActivityLog> = new Map();
+  private schedules: Map<number, Schedule> = new Map();
   private currentId = 1;
   private articleId = 1;
   private newsletterId = 1;
   private logId = 1;
+  private scheduleId = 1;
 
   // Users
   async getUser(id: number): Promise<User | undefined> {
@@ -116,6 +125,13 @@ export class MemStorage implements IStorage {
       ...insertNewsletter,
       id,
       status: insertNewsletter.status || "draft",
+      frequency: insertNewsletter.frequency || "manual",
+      scheduleTime: insertNewsletter.scheduleTime || null,
+      approvalRequired: insertNewsletter.approvalRequired || false,
+      approvalEmail: insertNewsletter.approvalEmail || null,
+      approvedBy: insertNewsletter.approvedBy || null,
+      approvedAt: null,
+      htmlContent: insertNewsletter.htmlContent || null,
       beehiivId: insertNewsletter.beehiivId || null,
       beehiivUrl: insertNewsletter.beehiivUrl || null,
       wordCount: insertNewsletter.wordCount || null,
@@ -159,6 +175,13 @@ export class MemStorage implements IStorage {
       newsletterTitle: insertSettings.newsletterTitle || null,
       issueStartNumber: insertSettings.issueStartNumber || null,
       defaultNewsSource: insertSettings.defaultNewsSource || null,
+      sendgridApiKey: insertSettings.sendgridApiKey || null,
+      approvalEmail: insertSettings.approvalEmail || null,
+      approvalRequired: insertSettings.approvalRequired || false,
+      dailyScheduleEnabled: insertSettings.dailyScheduleEnabled || false,
+      dailyScheduleTime: insertSettings.dailyScheduleTime || "09:00",
+      autoSelectArticles: insertSettings.autoSelectArticles || false,
+      maxDailyArticles: insertSettings.maxDailyArticles || 5,
       updatedAt: new Date(),
     };
     this.currentSettings = settings;
@@ -187,6 +210,71 @@ export class MemStorage implements IStorage {
 
   async clearActivityLogs(): Promise<void> {
     this.activityLogs.clear();
+  }
+
+  // Schedules
+  async getSchedules(): Promise<Schedule[]> {
+    return Array.from(this.schedules.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createSchedule(insertSchedule: InsertSchedule): Promise<Schedule> {
+    const id = this.scheduleId++;
+    const schedule: Schedule = {
+      id,
+      name: insertSchedule.name,
+      frequency: insertSchedule.frequency,
+      time: insertSchedule.time,
+      newsSourceUrl: insertSchedule.newsSourceUrl,
+      maxArticles: insertSchedule.maxArticles || null,
+      autoApprove: insertSchedule.autoApprove || false,
+      enabled: insertSchedule.enabled || true,
+      lastRun: null,
+      nextRun: this.calculateNextRun(insertSchedule.frequency, insertSchedule.time),
+      createdAt: new Date(),
+    };
+    this.schedules.set(id, schedule);
+    return schedule;
+  }
+
+  async updateSchedule(id: number, updates: Partial<Schedule>): Promise<Schedule | undefined> {
+    const schedule = this.schedules.get(id);
+    if (schedule) {
+      const updated = { ...schedule, ...updates };
+      if (updates.frequency || updates.time) {
+        updated.nextRun = this.calculateNextRun(updated.frequency, updated.time);
+      }
+      this.schedules.set(id, updated);
+      return updated;
+    }
+    return undefined;
+  }
+
+  async deleteSchedule(id: number): Promise<boolean> {
+    return this.schedules.delete(id);
+  }
+
+  async getEnabledSchedules(): Promise<Schedule[]> {
+    return Array.from(this.schedules.values()).filter(s => s.enabled);
+  }
+
+  private calculateNextRun(frequency: string, time: string): Date {
+    const now = new Date();
+    const [hours, minutes] = time.split(':').map(Number);
+    const nextRun = new Date(now);
+    nextRun.setHours(hours, minutes, 0, 0);
+
+    if (frequency === 'daily') {
+      if (nextRun <= now) {
+        nextRun.setDate(nextRun.getDate() + 1);
+      }
+    } else if (frequency === 'weekly') {
+      nextRun.setDate(nextRun.getDate() + (7 - nextRun.getDay()));
+      if (nextRun <= now) {
+        nextRun.setDate(nextRun.getDate() + 7);
+      }
+    }
+
+    return nextRun;
   }
 }
 

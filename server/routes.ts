@@ -4,7 +4,9 @@ import { storage } from "./storage";
 import { newsService } from "./services/newsService";
 import { ClaudeService } from "./services/claudeService";
 import { BeehiivService } from "./services/beehiivService";
-import { insertArticleSchema, insertNewsletterSchema, insertSettingsSchema, insertActivityLogSchema } from "@shared/schema";
+import { EmailService } from "./services/emailService";
+import { schedulerService } from "./services/schedulerService";
+import { insertArticleSchema, insertNewsletterSchema, insertSettingsSchema, insertActivityLogSchema, insertScheduleSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -133,17 +135,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const wordCount = content.split(/\s+/).length;
+      const actualIssueNumber = issueNumber || await storage.getNextIssueNumber();
 
       const newsletter = await storage.createNewsletter({
-        issueNumber: issueNumber || await storage.getNextIssueNumber(),
-        title: `${settings.newsletterTitle || "AI Weekly"} #${issueNumber || await storage.getNextIssueNumber()}`,
+        issueNumber: actualIssueNumber,
+        title: `${settings.newsletterTitle || "AI Weekly"} #${actualIssueNumber}`,
         content,
+        htmlContent: null,
         date: new Date(date || Date.now()),
-        status: "generated",
+        status: settings.approvalRequired ? "generated" : "approved",
+        frequency: "manual",
+        scheduleTime: null,
+        approvalRequired: settings.approvalRequired || false,
+        approvalEmail: settings.approvalEmail || null,
+        approvedBy: null,
         wordCount,
         beehiivId: null,
         beehiivUrl: null
       });
+
+      // Send approval email if required
+      if (settings.approvalRequired && settings.sendgridApiKey && settings.approvalEmail) {
+        try {
+          const emailService = new EmailService(settings.sendgridApiKey);
+          await emailService.sendApprovalEmail(
+            settings.approvalEmail,
+            newsletter.title,
+            content,
+            newsletter.id
+          );
+          
+          await storage.createActivityLog({
+            message: "Approval email sent",
+            details: `Sent to ${settings.approvalEmail}`,
+            type: "info"
+          });
+        } catch (emailError) {
+          await storage.createActivityLog({
+            message: "Failed to send approval email",
+            details: emailError instanceof Error ? emailError.message : "Unknown error",
+            type: "warning"
+          });
+        }
+      }
 
       await storage.createActivityLog({
         message: "Newsletter generated successfully",
@@ -264,6 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...settings,
           claudeApiKey: settings.claudeApiKey ? '***masked***' : null,
           beehiivApiKey: settings.beehiivApiKey ? '***masked***' : null,
+          sendgridApiKey: settings.sendgridApiKey ? '***masked***' : null,
         };
         res.json({ settings: safeSettings });
       } else {
@@ -293,6 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...settings,
         claudeApiKey: settings.claudeApiKey ? '***masked***' : null,
         beehiivApiKey: settings.beehiivApiKey ? '***masked***' : null,
+        sendgridApiKey: settings.sendgridApiKey ? '***masked***' : null,
       };
 
       res.json({ settings: safeSettings });
@@ -327,6 +363,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const beehiivService = new BeehiivService(apiKey);
         isConnected = await beehiivService.testConnection();
         if (!isConnected) error = "Failed to connect to Beehiiv API";
+      } else if (service === 'sendgrid') {
+        if (!apiKey) {
+          return res.status(400).json({ message: "API key is required" });
+        }
+        const emailService = new EmailService(apiKey);
+        isConnected = await emailService.testConnection();
+        if (!isConnected) error = "Failed to connect to SendGrid API";
       } else {
         return res.status(400).json({ message: "Invalid service" });
       }
@@ -377,6 +420,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Schedule management endpoints
+  app.get("/api/schedules", async (req, res) => {
+    try {
+      const schedules = await storage.getSchedules();
+      res.json({ schedules });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to fetch schedules", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.post("/api/schedules", async (req, res) => {
+    try {
+      const validatedSchedule = insertScheduleSchema.parse(req.body);
+      const schedule = await storage.createSchedule(validatedSchedule);
+      
+      // Restart scheduler to include new schedule
+      await schedulerService.scheduleJob(schedule);
+      
+      await storage.createActivityLog({
+        message: "Schedule created",
+        details: `New schedule "${schedule.name}" created for ${schedule.frequency} at ${schedule.time}`,
+        type: "success"
+      });
+
+      res.json({ schedule });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to create schedule", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.patch("/api/schedules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const schedule = await storage.updateSchedule(id, updates);
+      if (!schedule) {
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+
+      // Update the scheduled job
+      await schedulerService.unscheduleJob(id);
+      if (schedule.enabled) {
+        await schedulerService.scheduleJob(schedule);
+      }
+
+      res.json({ schedule });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to update schedule", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.delete("/api/schedules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      await schedulerService.unscheduleJob(id);
+      const deleted = await storage.deleteSchedule(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+
+      await storage.createActivityLog({
+        message: "Schedule deleted",
+        details: `Schedule with ID ${id} has been deleted`,
+        type: "info"
+      });
+
+      res.json({ message: "Schedule deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to delete schedule", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Newsletter approval endpoints
+  app.get("/api/newsletter/approve/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const newsletter = await storage.updateNewsletter(id, {
+        status: "approved",
+        approvedBy: "Email Approval",
+        approvedAt: new Date()
+      });
+
+      if (!newsletter) {
+        return res.status(404).json({ message: "Newsletter not found" });
+      }
+
+      await storage.createActivityLog({
+        message: "Newsletter approved via email",
+        details: `Newsletter "${newsletter.title}" has been approved`,
+        type: "success"
+      });
+
+      // Auto-publish if configured
+      const settings = await storage.getSettings();
+      if (settings?.beehiivApiKey && settings?.beehiivPublicationId) {
+        const beehiivService = new BeehiivService(settings.beehiivApiKey);
+        const result = await beehiivService.publishNewsletter(
+          settings.beehiivPublicationId, 
+          newsletter.title, 
+          newsletter.content
+        );
+
+        await storage.updateNewsletter(id, {
+          status: "published",
+          beehiivId: result.id,
+          beehiivUrl: result.web_url,
+          publishedAt: new Date()
+        });
+      }
+
+      res.send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
+            <h2 style="color: #10b981;">Newsletter Approved Successfully!</h2>
+            <p>The newsletter "${newsletter.title}" has been approved and published.</p>
+            <p style="color: #666; margin-top: 30px;">You can close this window now.</p>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      res.status(500).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
+            <h2 style="color: #ef4444;">Error</h2>
+            <p>Failed to approve newsletter: ${error instanceof Error ? error.message : 'Unknown error'}</p>
+          </body>
+        </html>
+      `);
+    }
+  });
+
+  app.get("/api/newsletter/reject/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const newsletter = await storage.updateNewsletter(id, {
+        status: "rejected",
+        approvedBy: "Email Rejection"
+      });
+
+      if (!newsletter) {
+        return res.status(404).json({ message: "Newsletter not found" });
+      }
+
+      await storage.createActivityLog({
+        message: "Newsletter rejected via email",
+        details: `Newsletter "${newsletter.title}" has been rejected`,
+        type: "warning"
+      });
+
+      res.send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
+            <h2 style="color: #ef4444;">Newsletter Rejected</h2>
+            <p>The newsletter "${newsletter.title}" has been rejected.</p>
+            <p style="color: #666; margin-top: 30px;">You can close this window now.</p>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      res.status(500).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
+            <h2 style="color: #ef4444;">Error</h2>
+            <p>Failed to reject newsletter: ${error instanceof Error ? error.message : 'Unknown error'}</p>
+          </body>
+        </html>
+      `);
+    }
+  });
+
+  // Start the scheduler service
+  schedulerService.start().catch(console.error);
 
   const httpServer = createServer(app);
   return httpServer;

@@ -38,6 +38,8 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 ### AI Newsletter Generation
 - **AI Service**: Anthropic Claude integration (default model: claude-sonnet-4-20250514)
 - **Content Generation**: Automated newsletter creation from selected articles
+- **Rich Text Editor**: WYSIWYG editor with formatting tools and multi-platform preview
+- **Platform Preview**: Mobile, desktop, and email format previews
 - **Customization**: Configurable temperature, max tokens, and custom prompts
 - **Templates**: Standardized newsletter format with issue numbering
 
@@ -48,9 +50,11 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 - **Status Tracking**: Track newsletter status (draft, generated, published)
 
 ### Settings Management
-- **API Configuration**: Claude and Beehiiv API key management
+- **API Configuration**: Claude, Beehiiv, and SendGrid API key management
 - **Newsletter Settings**: Title, issue numbering, and default sources
 - **AI Parameters**: Model selection, temperature, and token limits
+- **Email Settings**: SendGrid configuration and approval workflow settings
+- **Scheduling Settings**: Daily automation, article selection, and time configuration
 - **Connection Testing**: Built-in API connectivity testing
 
 ### Activity Monitoring
@@ -58,6 +62,18 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 - **Log Management**: View, export, and clear system logs
 - **Error Handling**: Structured error logging with details
 - **Performance Monitoring**: API response time tracking
+
+### Scheduling System
+- **Automated Generation**: Daily, weekly, and monthly newsletter schedules
+- **Multi-source Support**: Different news sources for different schedules
+- **Auto-approval**: Optional automatic approval and publishing
+- **Schedule Management**: Create, edit, pause, and delete schedules
+
+### Email Approval Workflow
+- **Approval Notifications**: Email notifications for newsletter approval
+- **One-click Actions**: Approve or reject newsletters via email links
+- **Toggle Control**: Enable/disable approval requirement per newsletter
+- **SendGrid Integration**: Professional email delivery service
 
 ## Data Flow
 
@@ -110,7 +126,13 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 - **Session Management**: PostgreSQL-backed session storage
 
 ## Changelog
-- June 22, 2025. Initial setup
+- June 22, 2025: Initial setup
+- June 22, 2025: Enhanced with advanced features
+  - Added rich text editor with multi-platform preview (mobile, desktop, email)
+  - Implemented scheduling system for automated newsletter generation
+  - Added email approval workflow with SendGrid integration
+  - Enhanced settings with scheduling and email configuration options
+  - Added schedule manager for creating daily/weekly/monthly automated newsletters
 
 ## User Preferences
 

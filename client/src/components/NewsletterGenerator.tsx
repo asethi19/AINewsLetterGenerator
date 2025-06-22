@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Edit, Clock, AlignLeft, RotateCcw, Calendar } from "lucide-react";
+import { FileText, Edit, Clock, AlignLeft, RotateCcw, Calendar, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useNewsletter } from "@/hooks/useNewsletter";
+import RichTextEditor from "@/components/RichTextEditor";
 import { format } from "date-fns";
 
 export default function NewsletterGenerator() {
   const [newsletterDate, setNewsletterDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedTemplate, setSelectedTemplate] = useState("standard");
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editedContent, setEditedContent] = useState("");
   
   const { newsletter, isGenerating, generateNewsletter, regenerateNewsletter } = useNewsletter();
 
@@ -43,6 +47,17 @@ export default function NewsletterGenerator() {
     });
   };
 
+  const handleEdit = () => {
+    setEditedContent(newsletter?.content || "");
+    setIsEditorOpen(true);
+  };
+
+  const handleSaveEdit = (content: string) => {
+    setEditedContent(content);
+    // Here you would typically save the edited content to the backend
+    setIsEditorOpen(false);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -55,10 +70,26 @@ export default function NewsletterGenerator() {
             <span className="text-sm text-slate-600">
               Issue #{newsletter?.issueNumber || nextIssueNumber}
             </span>
-            <Button variant="ghost" size="sm">
-              <Edit className="w-4 h-4 mr-1" />
-              Edit
-            </Button>
+            <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={!newsletter?.content} onClick={handleEdit}>
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Newsletter</DialogTitle>
+                </DialogHeader>
+                {isEditorOpen && (
+                  <RichTextEditor
+                    content={editedContent}
+                    onChange={handleSaveEdit}
+                    title={newsletter?.title || "Newsletter"}
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         </CardTitle>
       </CardHeader>
