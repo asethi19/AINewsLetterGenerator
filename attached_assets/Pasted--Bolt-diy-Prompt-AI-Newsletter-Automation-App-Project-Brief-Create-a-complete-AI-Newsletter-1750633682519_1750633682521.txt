@@ -1,0 +1,221 @@
+# Bolt.diy Prompt: AI Newsletter Automation App
+
+## Project Brief
+Create a complete AI Newsletter Automation application that fetches AI news, generates newsletters using Claude API, and publishes to Beehiiv automatically.
+
+## Tech Stack
+- **Frontend:** React with Tailwind CSS
+- **Backend:** Node.js with Express
+- **APIs:** Claude API, Beehiiv API
+- **Additional:** Axios for HTTP requests, date-fns for date handling
+
+## Application Features
+
+### 1. Dashboard Interface
+Create a clean, modern dashboard with:
+- **Header:** "AI Newsletter Automation Hub" with current date/time
+- **Newsletter Preview Section:** Live preview of generated content
+- **Control Panel:** Generation and publishing controls
+- **Status Panel:** Real-time status updates and logs
+- **Settings Panel:** API configuration and newsletter customization
+
+### 2. Core Functionality
+
+#### News Fetching System
+- Input field for RSS/JSON feed URL (default: provided AI news source)
+- "Fetch Latest News" button with loading state
+- Display fetched articles in a scrollable list with:
+  - Article titles
+  - Publication dates  
+  - Source names
+  - Selection checkboxes for manual curation
+
+#### Newsletter Generation
+- "Generate Newsletter" button that:
+  - Calls Claude API with the established prompt template
+  - Shows generation progress with loading spinner
+  - Displays generated newsletter in markdown preview
+  - Allows editing before publishing
+- Issue number auto-increment system
+- Date picker for custom newsletter dates
+
+#### Beehiiv Integration
+- "Publish to Beehiiv" button
+- Publication status indicator
+- Success/error message display
+- Published newsletter link display
+
+### 3. Configuration Settings
+Create a settings modal with:
+- **Claude API Settings:**
+  - API key input (secure/masked)
+  - Model selection dropdown (claude-3-sonnet, claude-3-opus)
+  - Temperature slider (0.1 - 1.0)
+  - Max tokens input
+- **Beehiiv Settings:**
+  - API key input (secure/masked)  
+  - Publication ID input
+  - Default tags input
+- **Newsletter Settings:**
+  - Newsletter title customization
+  - Issue number starting point
+  - Brand voice customization options
+  - Section preferences (toggles for different section types)
+
+### 4. Backend API Structure
+
+#### Route Endpoints:
+```javascript
+// News fetching
+GET /api/news/fetch?url={RSS_URL}
+
+// Newsletter generation  
+POST /api/newsletter/generate
+Body: { newsData, issueNumber, date, customPrompt? }
+
+// Beehiiv publishing
+POST /api/newsletter/publish
+Body: { content, title, tags }
+
+// Settings
+GET/POST /api/settings
+```
+
+#### Environment Variables Needed:
+```
+CLAUDE_API_KEY=your_claude_api_key
+BEEHIIV_API_KEY=your_beehiiv_api_key  
+BEEHIIV_PUBLICATION_ID=your_publication_id
+```
+
+### 5. UI/UX Requirements
+
+#### Visual Design:
+- Modern, clean interface with professional color scheme
+- Gradient backgrounds and subtle shadows
+- Responsive design for desktop and tablet
+- Loading states with smooth animations
+- Toast notifications for user feedback
+
+#### Component Layout:
+```
+┌─────────────────────────────────────────┐
+│               HEADER                    │
+├─────────────────┬───────────────────────┤
+│                 │                       │
+│   NEWS FETCH    │    NEWSLETTER         │
+│   SECTION       │    PREVIEW            │
+│                 │                       │
+├─────────────────┼───────────────────────┤
+│                 │                       │
+│   CONTROLS      │    STATUS/LOGS        │
+│   PANEL         │                       │
+│                 │                       │
+└─────────────────┴───────────────────────┘
+```
+
+### 6. Key Components to Build
+
+#### NewsFeeder Component:
+- URL input with validation
+- Fetch button with loading state  
+- Article list with selection
+- Manual refresh capability
+
+#### NewsletterGenerator Component:
+- Generation trigger button
+- Progress indicator
+- Markdown preview with syntax highlighting
+- Edit capability before publishing
+
+#### BeehiivPublisher Component:
+- Publish button with confirmation
+- Status display
+- Published newsletter link
+- Publishing history log
+
+#### SettingsModal Component:
+- Tabbed interface for different settings
+- Secure input fields for API keys
+- Save/reset functionality
+- Connection testing buttons
+
+### 7. Error Handling & UX
+- Comprehensive error messages for API failures
+- Retry mechanisms for failed requests
+- Offline capability indicators
+- Form validation with helpful error states
+- Success confirmations with clear next steps
+
+### 8. Advanced Features
+- **Scheduling:** Option to schedule newsletter generation/publishing
+- **Templates:** Multiple newsletter template options
+- **Analytics:** Basic engagement metrics if available from Beehiiv
+- **Preview Mode:** Send test emails before publishing
+- **Backup:** Save generated newsletters locally
+
+### 9. Sample Code Structure
+
+#### Main App Component:
+```javascript
+// App.jsx structure
+- Header with title and status
+- Main grid layout with 4 quadrants
+- Modal overlays for settings
+- Toast notification system
+```
+
+#### API Integration:
+```javascript
+// Utility functions for:
+- fetchNewsFromSource()
+- generateWithClaude()
+- publishToBeehiiv()
+- saveSettings()
+```
+
+## Implementation Instructions
+
+### Step 1: Project Setup
+Create the basic React app structure with routing and state management
+
+### Step 2: Backend Setup  
+Set up Express server with environment variables and API route structure
+
+### Step 3: Frontend Core
+Build the main dashboard layout and navigation
+
+### Step 4: News Integration
+Implement news fetching from RSS/JSON sources
+
+### Step 5: Claude Integration
+Set up Claude API calls with the newsletter generation prompt
+
+### Step 6: Beehiiv Integration
+Implement Beehiiv API for newsletter publishing
+
+### Step 7: Settings & Configuration
+Add settings management and API key handling
+
+### Step 8: Polish & Testing
+Add error handling, loading states, and user feedback
+
+## Security Notes
+- Store API keys securely using environment variables
+- Implement input validation for all user inputs
+- Add rate limiting for API calls
+- Sanitize content before publishing
+
+## Sample Environment Setup
+```bash
+# .env file structure
+NODE_ENV=development
+PORT=3001
+CLAUDE_API_KEY=sk-ant-api03-...
+CLAUDE_MODEL=claude-3-sonnet-20240229
+BEEHIIV_API_KEY=your_beehiiv_key
+BEEHIIV_PUBLICATION_ID=your_pub_id
+DEFAULT_NEWS_SOURCE=https://www.inoreader.com/stream/user/1003985272/tag/AI/view/json
+```
+
+Build this as a production-ready application with proper error handling, security measures, and a polished user interface. The app should be intuitive enough for daily use while being robust enough for automated workflows.
