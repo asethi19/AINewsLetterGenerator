@@ -6,7 +6,8 @@ import { ClaudeService } from "./services/claudeService";
 import { BeehiivService } from "./services/beehiivService";
 import { EmailService } from "./services/emailService";
 import { schedulerService } from "./services/schedulerService";
-import { insertArticleSchema, insertNewsletterSchema, insertSettingsSchema, insertActivityLogSchema, insertScheduleSchema } from "@shared/schema";
+import { insertArticleSchema, insertNewsletterSchema, insertSettingsSchema, insertActivityLogSchema, insertScheduleSchema, insertSocialMediaPostSchema, type SocialMediaPost } from "@shared/schema";
+import { SocialMediaService } from "./services/socialMediaService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -418,6 +419,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to get next issue number", 
         error: error instanceof Error ? error.message : "Unknown error" 
       });
+    }
+  });
+
+  // Social Media Posts routes
+  app.get("/api/social-media-posts", async (req, res) => {
+    try {
+      const posts = await storage.getSocialMediaPosts();
+      res.json({ posts });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/social-media-posts/newsletter/:id", async (req, res) => {
+    try {
+      const newsletterId = parseInt(req.params.id);
+      const posts = await storage.getSocialMediaPostsByNewsletter(newsletterId);
+      res.json({ posts });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/social-media-posts/generate", async (req, res) => {
+    try {
+      const { newsletterId } = req.body;
+      
+      if (!newsletterId) {
+        return res.status(400).json({ error: "Newsletter ID is required" });
+      }
+
+      const newsletter = await storage.getNewsletter(newsletterId);
+      if (!newsletter) {
+        return res.status(404).json({ error: "Newsletter not found" });
+      }
+
+      const settings = await storage.getSettings();
+      if (!settings?.claudeApiKey) {
+        return res.status(400).json({ error: "Claude API key not configured" });
+      }
+
+      const socialMediaService = new SocialMediaService(settings.claudeApiKey);
+      
+      // Generate social media content
+      const socialContent = await socialMediaService.generateSocialMediaContent(
+        newsletter.content,
+        newsletter.title,
+        newsletter.issueNumber
+      );
+
+      // Generate random posting times
+      const postingTimes = socialMediaService.generateRandomPostingTimes(3);
+
+      const createdPosts: SocialMediaPost[] = [];
+
+      // Create Twitter post
+      const twitterPost = await storage.createSocialMediaPost({
+        platform: "twitter",
+        content: socialContent.twitter.content,
+        hashtags: socialContent.twitter.hashtags,
+        scheduledFor: postingTimes[0],
+        newsletterId: newsletter.id,
+        engagementHook: socialContent.twitter.hook,
+        callToAction: socialContent.twitter.cta,
+        status: "scheduled"
+      });
+      createdPosts.push(twitterPost);
+
+      // Create Instagram post
+      const instagramPost = await storage.createSocialMediaPost({
+        platform: "instagram",
+        content: socialContent.instagram.content,
+        hashtags: socialContent.instagram.hashtags,
+        scheduledFor: postingTimes[1],
+        newsletterId: newsletter.id,
+        engagementHook: socialContent.instagram.hook,
+        callToAction: socialContent.instagram.cta,
+        status: "scheduled"
+      });
+      createdPosts.push(instagramPost);
+
+      // Create YouTube Shorts post
+      const youtubePost = await storage.createSocialMediaPost({
+        platform: "youtube",
+        content: `${socialContent.youtube.title}\n\n${socialContent.youtube.description}`,
+        hashtags: socialContent.youtube.hashtags,
+        scheduledFor: postingTimes[2],
+        newsletterId: newsletter.id,
+        engagementHook: socialContent.youtube.hook,
+        callToAction: socialContent.youtube.cta,
+        status: "scheduled"
+      });
+      createdPosts.push(youtubePost);
+
+      await storage.createActivityLog({
+        type: "info",
+        message: `Generated social media posts for newsletter #${newsletter.issueNumber}`,
+        details: `Created ${createdPosts.length} posts across Twitter, Instagram, and YouTube`
+      });
+
+      res.json({ 
+        posts: createdPosts,
+        message: "Social media posts generated and scheduled successfully"
+      });
+    } catch (error: any) {
+      console.error("Error generating social media posts:", error);
+      await storage.createActivityLog({
+        type: "error",
+        message: "Failed to generate social media posts",
+        details: error.message
+      });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/social-media-posts", async (req, res) => {
+    try {
+      const validatedData = insertSocialMediaPostSchema.parse(req.body);
+      const post = await storage.createSocialMediaPost(validatedData);
+      res.status(201).json({ post });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/social-media-posts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      const post = await storage.updateSocialMediaPost(id, updates);
+      
+      if (!post) {
+        return res.status(404).json({ error: "Social media post not found" });
+      }
+      
+      res.json({ post });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/social-media-posts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteSocialMediaPost(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Social media post not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

@@ -1,8 +1,9 @@
 import { 
-  users, articles, newsletters, settings, activityLogs, schedules,
+  users, articles, newsletters, settings, activityLogs, schedules, socialMediaPosts,
   type User, type InsertUser, type Article, type InsertArticle,
   type Newsletter, type InsertNewsletter, type Settings, type InsertSettings,
-  type ActivityLog, type InsertActivityLog, type Schedule, type InsertSchedule
+  type ActivityLog, type InsertActivityLog, type Schedule, type InsertSchedule,
+  type SocialMediaPost, type InsertSocialMediaPost
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -42,6 +43,14 @@ export interface IStorage {
   updateSchedule(id: number, updates: Partial<Schedule>): Promise<Schedule | undefined>;
   deleteSchedule(id: number): Promise<boolean>;
   getEnabledSchedules(): Promise<Schedule[]>;
+  
+  // Social Media Posts
+  getSocialMediaPosts(): Promise<SocialMediaPost[]>;
+  getSocialMediaPostsByNewsletter(newsletterId: number): Promise<SocialMediaPost[]>;
+  createSocialMediaPost(post: InsertSocialMediaPost): Promise<SocialMediaPost>;
+  updateSocialMediaPost(id: number, updates: Partial<SocialMediaPost>): Promise<SocialMediaPost | undefined>;
+  deleteSocialMediaPost(id: number): Promise<boolean>;
+  getScheduledSocialMediaPosts(): Promise<SocialMediaPost[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -51,11 +60,13 @@ export class MemStorage implements IStorage {
   private currentSettings: Settings | undefined = undefined;
   private activityLogs: Map<number, ActivityLog> = new Map();
   private schedules: Map<number, Schedule> = new Map();
+  private socialMediaPosts: Map<number, SocialMediaPost> = new Map();
   private currentId = 1;
   private articleId = 1;
   private newsletterId = 1;
   private logId = 1;
   private scheduleId = 1;
+  private socialMediaPostId = 1;
 
   // Users
   async getUser(id: number): Promise<User | undefined> {
@@ -518,6 +529,54 @@ export class DatabaseStorage implements IStorage {
     }
 
     return nextRun;
+  }
+
+  // Social Media Posts
+  async getSocialMediaPosts(): Promise<SocialMediaPost[]> {
+    return await db.select().from(socialMediaPosts).orderBy(desc(socialMediaPosts.scheduledFor));
+  }
+
+  async getSocialMediaPostsByNewsletter(newsletterId: number): Promise<SocialMediaPost[]> {
+    return await db.select().from(socialMediaPosts)
+      .where(eq(socialMediaPosts.newsletterId, newsletterId))
+      .orderBy(desc(socialMediaPosts.scheduledFor));
+  }
+
+  async createSocialMediaPost(insertPost: InsertSocialMediaPost): Promise<SocialMediaPost> {
+    const [post] = await db
+      .insert(socialMediaPosts)
+      .values({
+        ...insertPost,
+        status: insertPost.status || "scheduled",
+        hashtags: insertPost.hashtags || [],
+        engagementHook: insertPost.engagementHook || null,
+        callToAction: insertPost.callToAction || null,
+        postUrl: null,
+        engagementStats: null,
+      })
+      .returning();
+    return post;
+  }
+
+  async updateSocialMediaPost(id: number, updates: Partial<SocialMediaPost>): Promise<SocialMediaPost | undefined> {
+    const [post] = await db
+      .update(socialMediaPosts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(socialMediaPosts.id, id))
+      .returning();
+    return post || undefined;
+  }
+
+  async deleteSocialMediaPost(id: number): Promise<boolean> {
+    const result = await db.delete(socialMediaPosts).where(eq(socialMediaPosts.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getScheduledSocialMediaPosts(): Promise<SocialMediaPost[]> {
+    const now = new Date();
+    return await db.select().from(socialMediaPosts)
+      .where(eq(socialMediaPosts.status, "scheduled"))
+      .orderBy(socialMediaPosts.scheduledFor);
   }
 }
 

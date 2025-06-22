@@ -85,6 +85,22 @@ export const schedules = pgTable("schedules", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const socialMediaPosts = pgTable("social_media_posts", {
+  id: serial("id").primaryKey(),
+  platform: text("platform").notNull(), // 'twitter', 'instagram', 'youtube'
+  content: text("content").notNull(),
+  hashtags: text("hashtags").array().default([]),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  status: text("status").default("scheduled"), // 'scheduled', 'posted', 'failed'
+  newsletterId: integer("newsletter_id").references(() => newsletters.id),
+  engagementHook: text("engagement_hook"),
+  callToAction: text("call_to_action"),
+  postUrl: text("post_url"), // URL after posting
+  engagementStats: text("engagement_stats"), // JSON string for likes, shares, etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -119,6 +135,12 @@ export const insertScheduleSchema = createInsertSchema(schedules).omit({
   nextRun: true,
 });
 
+export const insertSocialMediaPostSchema = createInsertSchema(socialMediaPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Article = typeof articles.$inferSelect;
@@ -131,3 +153,5 @@ export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type Schedule = typeof schedules.$inferSelect;
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
+export type SocialMediaPost = typeof socialMediaPosts.$inferSelect;
+export type InsertSocialMediaPost = z.infer<typeof insertSocialMediaPostSchema>;

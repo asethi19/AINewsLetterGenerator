@@ -24,7 +24,7 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 ### Database Architecture
 - **Database**: PostgreSQL with Neon serverless driver (migrated from in-memory storage)
 - **Schema Management**: Drizzle Kit for migrations and schema management
-- **Tables**: Users, articles, newsletters, settings, activity logs, and schedules
+- **Tables**: Users, articles, newsletters, settings, activity logs, schedules, and social media posts
 - **Data Validation**: Zod schemas for runtime type checking
 - **Storage Layer**: DatabaseStorage implementation with full CRUD operations
 
@@ -76,6 +76,13 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 - **Toggle Control**: Enable/disable approval requirement per newsletter
 - **SendGrid Integration**: Professional email delivery service
 
+### Social Media Automation
+- **Multi-platform Generation**: Automated posts for Twitter/X, Instagram, and YouTube Shorts
+- **AI-powered Content**: Claude AI generates engaging, platform-specific content
+- **Random Scheduling**: Posts scheduled at optimal engagement times
+- **Subscription Focus**: Content designed to drive newsletter subscriptions
+- **Hashtag Optimization**: Platform-specific hashtag strategies for maximum reach
+
 ## Data Flow
 
 1. **News Ingestion**: Articles are fetched from configured RSS/JSON feeds
@@ -83,7 +90,9 @@ This is a full-stack AI-powered newsletter automation system built with React, E
 3. **AI Processing**: Selected articles are processed by Claude AI to generate newsletter content
 4. **Review & Edit**: Generated newsletters can be reviewed and modified
 5. **Publishing**: Final newsletters are published to Beehiiv platform
-6. **Tracking**: All activities are logged for monitoring and debugging
+6. **Social Media Generation**: AI creates platform-specific posts for Twitter, Instagram, and YouTube
+7. **Multi-channel Distribution**: Content is automatically scheduled across social platforms
+8. **Tracking**: All activities are logged for monitoring and debugging
 
 ## External Dependencies
 
@@ -138,6 +147,12 @@ This is a full-stack AI-powered newsletter automation system built with React, E
   - Replaced in-memory storage with DatabaseStorage implementation
   - Added database connection and ORM configuration
   - Pushed schema to PostgreSQL for persistent data storage
+- June 22, 2025: Added Social Media Automation
+  - Implemented AI-powered social media post generation for Twitter, Instagram, and YouTube Shorts
+  - Added SocialMediaService for platform-specific content creation
+  - Created SocialMediaManager component for managing multi-platform posts
+  - Integrated random scheduling for optimal engagement times
+  - Added social media posts database table with full CRUD operations
 
 ## User Preferences
 

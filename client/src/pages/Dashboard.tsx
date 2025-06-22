@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Settings, Newspaper, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewsFeeder from "@/components/NewsFeeder";
 import NewsletterGenerator from "@/components/NewsletterGenerator";
 import ControlsPanel from "@/components/ControlsPanel";
 import StatusPanel from "@/components/StatusPanel";
 import SettingsModal from "@/components/SettingsModal";
 import ScheduleManager from "@/components/ScheduleManager";
+import SocialMediaManager from "@/components/SocialMediaManager";
 
 export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -69,28 +71,51 @@ export default function Dashboard() {
 
       {/* Main Dashboard */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
-          {/* Left Column */}
-          <div className="space-y-6">
-            <NewsFeeder />
-          </div>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="generator">Generator</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="social">Social Media</TabsTrigger>
+            <TabsTrigger value="articles">Articles</TabsTrigger>
+          </TabsList>
 
-          {/* Right Column */}
-          <div className="space-y-6">
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column */}
+              <div className="space-y-6">
+                <NewsFeeder />
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                <NewsletterGenerator />
+                <ControlsPanel />
+              </div>
+            </div>
+
+            {/* Status Panel (Full Width) */}
+            <div className="mt-8">
+              <StatusPanel />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="generator" className="space-y-6">
             <NewsletterGenerator />
-            <ControlsPanel />
-          </div>
-        </div>
+          </TabsContent>
 
-        {/* Status Panel (Full Width) */}
-        <div className="mt-8">
-          <StatusPanel />
-        </div>
+          <TabsContent value="schedule" className="space-y-6">
+            <ScheduleManager />
+          </TabsContent>
 
-        {/* Schedule Manager (Full Width) */}
-        <div className="mt-8">
-          <ScheduleManager />
-        </div>
+          <TabsContent value="social" className="space-y-6">
+            <SocialMediaManager />
+          </TabsContent>
+
+          <TabsContent value="articles" className="space-y-6">
+            <NewsFeeder />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Settings Modal */}
