@@ -14,12 +14,18 @@ export interface BeehiivPost {
   published?: string;
 }
 
+import { config } from '../config';
+
 export class BeehiivService {
   private apiKey: string;
   private baseUrl = 'https://api.beehiiv.com/v2';
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(apiKey?: string) {
+    const key = apiKey || config.publishing.beehiiv.apiKey;
+    if (!key) {
+      throw new Error('Beehiiv API key is required. Set BEEHIIV_API_KEY environment variable or provide in config.');
+    }
+    this.apiKey = key;
   }
 
   private getHeaders() {

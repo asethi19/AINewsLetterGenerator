@@ -47,12 +47,19 @@ export interface SocialMediaContent {
   };
 }
 
+import { config } from '../config';
+
 export class SocialMediaService {
   private anthropic: Anthropic;
 
-  constructor(apiKey: string) {
+  constructor(apiKey?: string) {
+    const key = apiKey || config.ai.anthropic.apiKey;
+    if (!key) {
+      throw new Error('Anthropic API key is required for social media generation. Set ANTHROPIC_API_KEY environment variable or provide in config.');
+    }
+    
     this.anthropic = new Anthropic({
-      apiKey: apiKey,
+      apiKey: key,
     });
   }
 

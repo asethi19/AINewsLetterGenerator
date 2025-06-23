@@ -8,14 +8,21 @@ export interface EmailOptions {
   html?: string;
 }
 
+import { config } from '../config';
+
 export class EmailService {
   private mailService: MailService;
   private apiKey: string;
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(apiKey?: string) {
+    const key = apiKey || config.email.sendgrid.apiKey;
+    if (!key) {
+      throw new Error('SendGrid API key is required. Set SENDGRID_API_KEY environment variable or provide in config.');
+    }
+    
+    this.apiKey = key;
     this.mailService = new MailService();
-    this.mailService.setApiKey(apiKey);
+    this.mailService.setApiKey(key);
   }
 
   async sendApprovalEmail(

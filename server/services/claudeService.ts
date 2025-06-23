@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { config } from '../config';
 
 /*
 <important_code_snippet_instructions>

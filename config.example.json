@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "AI Newsletter Automation Hub",
+    "port": 5000,
+    "environment": "development"
+  },
+  "database": {
+    "type": "postgresql",
+    "url": "postgresql://username:password@localhost:5432/newsletter_db",
+    "mock": false
+  },
+  "ai": {
+    "anthropic": {
+      "apiKey": "your_anthropic_api_key_here",
+      "model": "claude-sonnet-4-20250514",
+      "maxTokens": 4096,
+      "temperature": 0.7
+    }
+  },
+  "publishing": {
+    "beehiiv": {
+      "apiKey": "your_beehiiv_api_key_here",
+      "publicationId": "your_publication_id_here"
+    }
+  },
+  "email": {
+    "sendgrid": {
+      "apiKey": "your_sendgrid_api_key_here",
+      "fromEmail": "noreply@yourdomain.com",
+      "fromName": "AI Newsletter Bot"
+    }
+  },
+  "newsletter": {
+    "title": "AI Weekly Newsletter",
+    "defaultSource": "https://www.inoreader.com/stream/user/1003985272/tag/AI/view/json",
+    "autoRefresh": true,
+    "refreshInterval": 300000
+  },
+  "scheduling": {
+    "enabled": true,
+    "timezone": "UTC",
+    "dailyTime": "09:00"
+  },
+  "socialMedia": {
+    "enabled": true,
+    "platforms": ["twitter", "instagram", "youtube"],
+    "autoPost": false
+  }
+}

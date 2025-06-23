@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { config } from './config';
 
 const app = express();
 app.use(express.json());
@@ -56,10 +57,21 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Display configuration info
+  console.log(`${config.app.name}`);
+  console.log(`Database: ${config.database.mock ? 'Mock (Testing)' : 'PostgreSQL'}`);
+  console.log(`AI Model: ${config.ai.anthropic.model}`);
+  console.log(`Newsletter: ${config.newsletter.title}`);
+  
+  // Check configuration
+  const missingKeys = config.validateRequiredKeys();
+  if (missingKeys.length > 0) {
+    console.warn('Missing configuration:');
+    missingKeys.forEach(key => console.warn(`   - ${key}`));
+    console.log('Copy .env.example to .env and fill in your API keys');
+  }
+
+  const port = config.app.port;
   server.listen({
     port,
     host: "0.0.0.0",

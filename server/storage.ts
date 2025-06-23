@@ -1,3 +1,5 @@
+import { config } from './config';
+import { mockDb } from './mockDb';
 import { 
   users, articles, newsletters, settings, activityLogs, schedules, socialMediaPosts, feedSources, dataBackups,
   type User, type InsertUser, type Article, type InsertArticle,
@@ -6,8 +8,18 @@ import {
   type SocialMediaPost, type InsertSocialMediaPost, type FeedSource, type InsertFeedSource,
   type DataBackup, type InsertDataBackup
 } from "@shared/schema";
-import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
+
+// Only import database if not using mock
+let db: any = null;
+if (!config.database.mock && process.env.DATABASE_URL) {
+  try {
+    const dbModule = require('./db');
+    db = dbModule.db;
+  } catch (error) {
+    console.warn('Database not available, falling back to mock database');
+  }
+}
 
 export interface IStorage {
   // Users
@@ -710,4 +722,15 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Choose storage implementation based on configuration
+function createStorage(): IStorage {
+  if (config.database.mock || !db) {
+    console.log('Using Mock Database for development/testing');
+    return mockDb as unknown as IStorage;
+  } else {
+    console.log('Using PostgreSQL Database');
+    return new DatabaseStorage();
+  }
+}
+
+export const storage = createStorage();
