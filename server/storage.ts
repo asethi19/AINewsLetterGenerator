@@ -339,8 +339,11 @@ export class DatabaseStorage implements IStorage {
     const [article] = await db
       .insert(articles)
       .values({
-        ...insertArticle,
+        title: insertArticle.title,
         content: insertArticle.content || null,
+        source: insertArticle.source,
+        url: insertArticle.url,
+        publishedDate: insertArticle.publishedDate || new Date(),
         selected: insertArticle.selected || false,
       })
       .returning();

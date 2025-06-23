@@ -136,6 +136,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertArticleSchema = createInsertSchema(articles).omit({
   id: true,
   fetchedAt: true,
+}).extend({
+  publishedDate: z.union([z.date(), z.string().transform((str) => new Date(str))]).default(() => new Date())
 });
 
 export const insertNewsletterSchema = createInsertSchema(newsletters).omit({
